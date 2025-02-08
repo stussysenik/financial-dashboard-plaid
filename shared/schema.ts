@@ -16,7 +16,6 @@ export const insertUserSchema = createInsertSchema(users)
     password: true,
   })
   .extend({
-    username: z.literal("admin"),
     password: z.string().min(4),
   });
 

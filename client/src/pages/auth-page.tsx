@@ -7,16 +7,9 @@ import { useForm } from "react-hook-form";
 import { Redirect } from "wouter";
 import { insertUserSchema } from "@shared/schema";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useEffect, useRef } from "react";
 
 export default function AuthPage() {
   const { user, loginMutation } = useAuth();
-  const passwordRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    // Auto focus password field since username is fixed
-    passwordRef.current?.focus();
-  }, []);
 
   if (user) {
     return <Redirect to="/" />;
@@ -32,7 +25,7 @@ export default function AuthPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <LoginForm passwordRef={passwordRef} />
+            <LoginForm />
           </CardContent>
         </Card>
       </div>
@@ -51,7 +44,7 @@ export default function AuthPage() {
   );
 }
 
-function LoginForm({ passwordRef }: { passwordRef: React.RefObject<HTMLInputElement> }) {
+function LoginForm() {
   const { loginMutation } = useAuth();
   const form = useForm({
     resolver: zodResolver(insertUserSchema),
@@ -66,6 +59,19 @@ function LoginForm({ passwordRef }: { passwordRef: React.RefObject<HTMLInputElem
       <form onSubmit={form.handleSubmit((data) => loginMutation.mutate(data))} className="space-y-4">
         <FormField
           control={form.control}
+          name="username"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Username</FormLabel>
+              <FormControl>
+                <Input {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
           name="password"
           render={({ field }) => (
             <FormItem>
@@ -74,7 +80,6 @@ function LoginForm({ passwordRef }: { passwordRef: React.RefObject<HTMLInputElem
                 <Input 
                   type="password" 
                   {...field} 
-                  ref={passwordRef}
                   placeholder="Enter your password" 
                 />
               </FormControl>
