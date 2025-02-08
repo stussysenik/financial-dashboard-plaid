@@ -39,13 +39,6 @@ export default function Dashboard() {
         description: "Your accounts have been successfully linked.",
       });
     },
-    onError: (error: Error) => {
-      toast({
-        title: "Connection failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
   });
 
   const { open, ready } = usePlaidLink({
@@ -70,23 +63,20 @@ export default function Dashboard() {
   );
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-5xl mx-auto">
-        {/* Header with minimal controls */}
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-2xl font-semibold">Finance Stats</h1>
-          <Button variant="ghost" onClick={() => logoutMutation.mutate()}>
-            Logout
-          </Button>
-        </div>
+    <div className="min-h-screen bg-background p-6 md:p-8">
+      <div className="max-w-4xl mx-auto">
+        {/* Minimal header */}
+        <Button 
+          variant="ghost" 
+          onClick={() => logoutMutation.mutate()}
+          className="absolute top-4 right-4"
+        >
+          Logout
+        </Button>
 
         {accounts.length === 0 ? (
-          // Clean connect bank UI
-          <Card className="p-8 text-center">
+          <Card className="p-8 text-center mt-16">
             <h2 className="text-xl font-medium mb-4">Connect Your Bank</h2>
-            <p className="text-muted-foreground mb-6">
-              Link your accounts to see your financial overview
-            </p>
             <Button
               onClick={() => open()}
               disabled={!ready || exchangeToken.isPending}
@@ -101,47 +91,45 @@ export default function Dashboard() {
             </Button>
           </Card>
         ) : (
-          // Widget-style statistics
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {/* Total Balance Widget */}
+          <div className="space-y-4">
+            {/* Total Balance - Main Widget */}
             <Card className="p-6 bg-gradient-to-br from-primary to-primary/90 text-primary-foreground">
               <h3 className="text-sm font-medium opacity-80">Total Balance</h3>
-              <p className="text-3xl font-bold mt-2">
+              <p className="text-4xl font-bold mt-2">
                 ${totalBalance.toFixed(2)}
               </p>
             </Card>
 
-            {/* Account Widgets */}
-            {accounts.map((account: any) => (
-              <Card 
-                key={account.account_id} 
-                className="p-6 hover:shadow-lg transition-shadow bg-gradient-to-br from-card to-muted/40"
-              >
-                <h3 className="text-sm font-medium text-muted-foreground">
-                  {account.name}
-                </h3>
-                <p className="text-2xl font-semibold mt-2">
-                  ${account.balances.current.toFixed(2)}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {account.subtype.replace(/_/g, ' ').toUpperCase()}
-                </p>
-              </Card>
-            ))}
+            {/* Account Grid */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              {accounts.map((account: any) => (
+                <Card 
+                  key={account.account_id} 
+                  className="p-6 bg-gradient-to-br from-card to-muted/40"
+                >
+                  <p className="text-2xl font-semibold">
+                    ${account.balances.current.toFixed(2)}
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {account.name}
+                  </p>
+                </Card>
+              ))}
 
-            {/* Add Account Widget */}
-            <Button
-              variant="outline"
-              onClick={() => open()}
-              disabled={!ready || exchangeToken.isPending}
-              className="h-full min-h-[140px] hover:shadow-lg transition-shadow"
-            >
-              {exchangeToken.isPending ? (
-                <Loader2 className="h-6 w-6 animate-spin" />
-              ) : (
-                <Plus className="h-6 w-6" />
-              )}
-            </Button>
+              {/* Add Account */}
+              <Button
+                variant="outline"
+                onClick={() => open()}
+                disabled={!ready || exchangeToken.isPending}
+                className="h-[120px]"
+              >
+                {exchangeToken.isPending ? (
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                ) : (
+                  <Plus className="h-6 w-6" />
+                )}
+              </Button>
+            </div>
           </div>
         )}
       </div>
