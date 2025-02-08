@@ -27,16 +27,26 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Exchange public token for access token
+  // Exchange public token and store institution data
   app.post("/api/plaid/set-access-token", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
     try {
-      const response = await plaidClient.itemPublicTokenExchange({
+      const tokenResponse = await plaidClient.itemPublicTokenExchange({
         public_token: req.body.public_token,
       });
 
-      await storage.updateUserPlaidToken(req.user.id, response.data.access_token);
+      const institutionResponse = await plaidClient.institutionsGetById({
+        institution_id: req.body.institution_id,
+        country_codes: [CountryCode.Us],
+      });
+
+      await storage.createPlaidConnection(req.user.id, {
+        accessToken: tokenResponse.data.access_token,
+        institutionId: req.body.institution_id,
+        institutionName: institutionResponse.data.institution.name,
+      });
+
       res.json({ success: true });
     } catch (error) {
       console.error("Error exchanging token:", error);
@@ -44,20 +54,24 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Get accounts from Plaid
+  // Get aggregated accounts data
   app.get("/api/plaid/accounts", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
-    const user = await storage.getUser(req.user.id);
-    if (!user?.plaidAccessToken) {
-      return res.json({ accounts: [] });
-    }
+    const connections = await storage.getPlaidConnections(req.user.id);
+    const accountsPromises = connections.map(async (connection) => {
+      const response = await plaidClient.accountsGet({
+        access_token: connection.accessToken,
+      });
+      return {
+        institution: connection.institutionName,
+        accounts: response.data.accounts,
+      };
+    });
 
     try {
-      const response = await plaidClient.accountsGet({
-        access_token: user.plaidAccessToken,
-      });
-      res.json(response.data);
+      const results = await Promise.all(accountsPromises);
+      res.json({ institutions: results });
     } catch (error) {
       console.error("Error fetching accounts:", error);
       res.status(500).json({ error: "Failed to fetch accounts" });
@@ -91,6 +105,36 @@ export function registerRoutes(app: Express): Server {
       req.body
     );
     res.status(201).json(transaction);
+  });
+
+  // Add this endpoint to get transactions across all accounts
+  app.get("/api/plaid/transactions", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    try {
+      const connections = await storage.getPlaidConnections(req.user.id);
+      const now = new Date();
+      const thirtyDaysAgo = new Date(now.setDate(now.getDate() - 30));
+      
+      const transactionsPromises = connections.map(async (connection) => {
+        const response = await plaidClient.transactionsGet({
+          access_token: connection.accessToken,
+          start_date: thirtyDaysAgo.toISOString().split('T')[0],
+          end_date: new Date().toISOString().split('T')[0],
+        });
+        
+        return {
+          institution: connection.institutionName,
+          transactions: response.data.transactions,
+        };
+      });
+
+      const results = await Promise.all(transactionsPromises);
+      res.json({ institutions: results });
+    } catch (error) {
+      console.error("Error fetching transactions:", error);
+      res.status(500).json({ error: "Failed to fetch transactions" });
+    }
   });
 
   const httpServer = createServer(app);

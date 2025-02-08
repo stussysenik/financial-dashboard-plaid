@@ -8,6 +8,12 @@ import { promisify } from "util";
 const MemoryStore = createMemoryStore(session);
 const scryptAsync = promisify(scrypt);
 
+interface PlaidConnection {
+  accessToken: string;
+  institutionId: string;
+  institutionName: string;
+}
+
 // Helper function to hash password consistently
 async function hashPassword(password: string) {
   const salt = randomBytes(16).toString("hex");
@@ -17,11 +23,13 @@ async function hashPassword(password: string) {
 
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
-  sessionStore: session.SessionStore;
+  private plaidConnections: Map<number, PlaidConnection[]>;
+  sessionStore: Express.SessionStore;
   currentId: number;
 
   constructor() {
     this.users = new Map();
+    this.plaidConnections = new Map();
     this.currentId = 1;
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000,
@@ -63,6 +71,32 @@ export class MemStorage implements IStorage {
     if (user) {
       user.plaidAccessToken = token;
       this.users.set(userId, user);
+    }
+  }
+
+  async getPlaidConnections(userId: number): Promise<Array<PlaidConnection>> {
+    return this.plaidConnections.get(userId) || [];
+  }
+
+  async createPlaidConnection(userId: number, connection: PlaidConnection): Promise<void> {
+    try {
+      const connections = this.plaidConnections.get(userId) || [];
+      connections.push(connection);
+      this.plaidConnections.set(userId, connections);
+    } catch (error) {
+      console.error('Error creating Plaid connection:', error);
+      throw new Error('Failed to create Plaid connection');
+    }
+  }
+
+  async clearAllData(): Promise<void> {
+    try {
+      this.users = new Map();
+      this.plaidConnections = new Map();
+      await this.initializeDefaultUser();
+    } catch (error) {
+      console.error('Error clearing data:', error);
+      throw new Error('Failed to clear test data');
     }
   }
 }

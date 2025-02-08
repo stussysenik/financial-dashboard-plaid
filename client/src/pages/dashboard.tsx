@@ -6,6 +6,8 @@ import { Loader2, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { usePlaidLink } from "react-plaid-link";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { SpendingSummary } from "@/components/spending-summary";
 
 export default function Dashboard() {
   const { logoutMutation } = useAuth();
@@ -21,8 +23,12 @@ export default function Dashboard() {
   });
 
   // Get connected accounts
-  const { data: accountsData, isLoading: isLoadingAccounts } = useQuery({
+  const { data: institutionsData, isLoading: isLoadingAccounts } = useQuery({
     queryKey: ["/api/plaid/accounts"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/plaid/accounts");
+      return res.json();
+    },
   });
 
   // Handle exchanging public token
@@ -49,23 +55,20 @@ export default function Dashboard() {
   });
 
   if (isLoadingLink || isLoadingAccounts) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
-  const accounts = accountsData?.accounts || [];
-  const totalBalance = accounts.reduce(
-    (sum: number, account: any) => sum + account.balances.current,
-    0
-  );
+  const institutions = institutionsData?.institutions || [];
+  const totalBalance = institutions.reduce((sum, institution) => {
+    return sum + institution.accounts.reduce(
+      (iSum: number, account: any) => iSum + account.balances.current,
+      0
+    );
+  }, 0);
 
   return (
     <div className="min-h-screen bg-background p-6 md:p-8">
-      <div className="max-w-4xl mx-auto">
-        {/* Minimal header */}
+      <div className="max-w-4xl mx-auto space-y-8">
         <Button 
           variant="ghost" 
           onClick={() => logoutMutation.mutate()}
@@ -74,64 +77,43 @@ export default function Dashboard() {
           Logout
         </Button>
 
-        {accounts.length === 0 ? (
-          <Card className="p-8 text-center mt-16">
-            <h2 className="text-xl font-medium mb-4">Connect Your Bank</h2>
-            <Button
-              onClick={() => open()}
-              disabled={!ready || exchangeToken.isPending}
-              className="w-full sm:w-auto"
-            >
-              {exchangeToken.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <Plus className="h-4 w-4 mr-2" />
-              )}
-              Connect Bank
-            </Button>
-          </Card>
-        ) : (
-          <div className="space-y-4">
-            {/* Total Balance - Main Widget */}
-            <Card className="p-6 bg-gradient-to-br from-primary to-primary/90 text-primary-foreground">
-              <h3 className="text-sm font-medium opacity-80">Total Balance</h3>
-              <p className="text-4xl font-bold mt-2">
-                ${totalBalance.toFixed(2)}
-              </p>
-            </Card>
+        {/* Total Balance */}
+        <Card className="p-6 bg-gradient-to-br from-primary to-primary/90 text-primary-foreground">
+          <h3 className="text-sm font-medium opacity-80">Total Balance</h3>
+          <p className="text-4xl font-bold mt-2">
+            ${totalBalance.toFixed(2)}
+          </p>
+        </Card>
 
-            {/* Account Grid */}
-            <div className="grid gap-4 sm:grid-cols-2">
-              {accounts.map((account: any) => (
-                <Card 
-                  key={account.account_id} 
-                  className="p-6 bg-gradient-to-br from-card to-muted/40"
-                >
-                  <p className="text-2xl font-semibold">
-                    ${account.balances.current.toFixed(2)}
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {account.name}
-                  </p>
-                </Card>
-              ))}
+        {/* Spending Summary */}
+        <SpendingSummary />
 
-              {/* Add Account */}
-              <Button
-                variant="outline"
-                onClick={() => open()}
-                disabled={!ready || exchangeToken.isPending}
-                className="h-[120px]"
-              >
-                {exchangeToken.isPending ? (
-                  <Loader2 className="h-6 w-6 animate-spin" />
-                ) : (
-                  <Plus className="h-6 w-6" />
-                )}
-              </Button>
+        {/* Institutions */}
+        <div className="space-y-8">
+          {institutions.map((institution: any) => (
+            <div key={institution.institution} className="space-y-4">
+              <h2 className="text-xl font-semibold">{institution.institution}</h2>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {institution.accounts.map((account: any) => (
+                  <AccountCard
+                    key={account.account_id}
+                    account={account}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          ))}
+
+          {/* Add Account Button */}
+          <Button
+            onClick={() => open()}
+            disabled={!ready || exchangeToken.isPending}
+            className="w-full"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Another Bank
+          </Button>
+        </div>
       </div>
     </div>
   );
