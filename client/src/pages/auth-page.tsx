@@ -1,16 +1,22 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/use-auth";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Redirect } from "wouter";
 import { insertUserSchema } from "@shared/schema";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useEffect, useRef } from "react";
 
 export default function AuthPage() {
-  const { user, loginMutation, registerMutation } = useAuth();
+  const { user, loginMutation } = useAuth();
+  const passwordRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    // Auto focus password field since username is fixed
+    passwordRef.current?.focus();
+  }, []);
 
   if (user) {
     return <Redirect to="/" />;
@@ -26,20 +32,7 @@ export default function AuthPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="login">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="login">Login</TabsTrigger>
-                <TabsTrigger value="register">Register</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="login">
-                <LoginForm />
-              </TabsContent>
-
-              <TabsContent value="register">
-                <RegisterForm />
-              </TabsContent>
-            </Tabs>
+            <LoginForm passwordRef={passwordRef} />
           </CardContent>
         </Card>
       </div>
@@ -58,12 +51,12 @@ export default function AuthPage() {
   );
 }
 
-function LoginForm() {
+function LoginForm({ passwordRef }: { passwordRef: React.RefObject<HTMLInputElement> }) {
   const { loginMutation } = useAuth();
   const form = useForm({
     resolver: zodResolver(insertUserSchema),
     defaultValues: {
-      username: "",
+      username: "admin",
       password: "",
     },
   });
@@ -73,25 +66,17 @@ function LoginForm() {
       <form onSubmit={form.handleSubmit((data) => loginMutation.mutate(data))} className="space-y-4">
         <FormField
           control={form.control}
-          name="username"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Username</FormLabel>
-              <FormControl>
-                <Input {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
           name="password"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Password</FormLabel>
               <FormControl>
-                <Input type="password" {...field} />
+                <Input 
+                  type="password" 
+                  {...field} 
+                  ref={passwordRef}
+                  placeholder="Enter your password" 
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -99,53 +84,6 @@ function LoginForm() {
         />
         <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
           Login
-        </Button>
-      </form>
-    </Form>
-  );
-}
-
-function RegisterForm() {
-  const { registerMutation } = useAuth();
-  const form = useForm({
-    resolver: zodResolver(insertUserSchema),
-    defaultValues: {
-      username: "",
-      password: "",
-    },
-  });
-
-  return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit((data) => registerMutation.mutate(data))} className="space-y-4">
-        <FormField
-          control={form.control}
-          name="username"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Username</FormLabel>
-              <FormControl>
-                <Input {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="password"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Password</FormLabel>
-              <FormControl>
-                <Input type="password" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <Button type="submit" className="w-full" disabled={registerMutation.isPending}>
-          Register
         </Button>
       </form>
     </Form>

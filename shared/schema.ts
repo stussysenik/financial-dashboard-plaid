@@ -9,11 +9,16 @@ export const users = pgTable("users", {
   plaidAccessToken: text("plaid_access_token"),
 });
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
-  plaidAccessToken: true,
-});
+// Simplified schema for single user system
+export const insertUserSchema = createInsertSchema(users)
+  .pick({
+    username: true,
+    password: true,
+  })
+  .extend({
+    username: z.literal("admin"),
+    password: z.string().min(4),
+  });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
