@@ -50,7 +50,7 @@ function LoginForm() {
     resolver: zodResolver(insertUserSchema),
     defaultValues: {
       username: "admin",
-      password: "",
+      password: "admin123",
     },
   });
 
@@ -80,7 +80,7 @@ function LoginForm() {
                 <Input 
                   type="password" 
                   {...field} 
-                  placeholder="Enter your password" 
+                  placeholder="Default: admin123" 
                 />
               </FormControl>
               <FormMessage />
