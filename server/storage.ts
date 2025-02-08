@@ -2,8 +2,18 @@ import { IStorage } from "./types";
 import { User, InsertUser } from "@shared/schema";
 import createMemoryStore from "memorystore";
 import session from "express-session";
+import { scrypt, randomBytes } from "crypto";
+import { promisify } from "util";
 
 const MemoryStore = createMemoryStore(session);
+const scryptAsync = promisify(scrypt);
+
+// Helper function to hash password consistently
+async function hashPassword(password: string) {
+  const salt = randomBytes(16).toString("hex");
+  const buf = (await scryptAsync(password, salt, 64)) as Buffer;
+  return `${buf.toString("hex")}.${salt}`;
+}
 
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
@@ -17,11 +27,15 @@ export class MemStorage implements IStorage {
       checkPeriod: 86400000,
     });
 
-    // Create default admin user
+    // Create default admin user with consistent hashing
+    this.initializeDefaultUser();
+  }
+
+  private async initializeDefaultUser() {
     const adminUser: User = {
       id: this.currentId++,
       username: "admin",
-      password: "c7ad44cbad762a5da0a452f9e854fdc1e0e7a52a38015f23f3eab1d80b931dd472634dfac71cd34ebc35d16ab7fb8a90c81f975113d6c7538dc69dd8de9077ec.d93591bdf7860e1e", // admin123
+      password: await hashPassword("admin123"),
       plaidAccessToken: null,
     };
     this.users.set(adminUser.id, adminUser);
