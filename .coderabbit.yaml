@@ -1,0 +1,18 @@
+language: en-US
+reviews:
+  auto_review:
+    enabled: true
+    drafts: false
+  path_instructions:
+    - path: "**/*.{ts,tsx,js,jsx}"
+      instructions: "Review for XSS, injection, React anti-patterns, and accessibility"
+    - path: "**/*.py"
+      instructions: "Review for injection, auth issues, and Python anti-patterns"
+    - path: "**/*.swift"
+      instructions: "Review for memory management, force unwraps, and SwiftUI best practices"
+    - path: "**/*.zig"
+      instructions: "Review for memory safety, undefined behavior, and error handling"
+    - path: "**/*.{ex,exs}"
+      instructions: "Review for security, OTP patterns, and Phoenix best practices"
+chat:
+  auto_reply: true
